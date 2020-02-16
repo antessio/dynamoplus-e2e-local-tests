@@ -1,10 +1,10 @@
 package antessio.dynamoplus;
 
-
-import antessio.dynamoplus.domain.Book;
-import antessio.dynamoplus.domain.Category;
-import antessio.dynamoplus.http.HttpConfiguration;
 import antessio.dynamoplus.sdk.*;
+import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorization;
+import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationApiKey;
+import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationHttpSignature;
+import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
 import antessio.dynamoplus.sdk.domain.system.collection.Collection;
 import antessio.dynamoplus.sdk.domain.system.collection.CollectionBuilder;
 import antessio.dynamoplus.sdk.domain.system.index.Index;
@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.fail;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
@@ -26,26 +26,9 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class AdminTest {
-    private final static String NUMBERS = "0123456789";
-    public static final HttpConfiguration HTTP_CONFIGURATION = new HttpConfiguration(30000, 30000, 30000);
-    private SDK dynamoplusSdk;
-    public static final Category PULP = Category.builder().id(UUID.randomUUID().toString()).name("Pulp").build();
-    public static final Category THRILLER = Category.builder().id(UUID.randomUUID().toString()).name("Thriller").build();
 
-    @BeforeEach
-    void setUp() {
-        String host = Optional.ofNullable(System.getenv("dynamoplus.host")).orElse("http://localhost:3000");
-        System.out.println("host = " + host);
-        dynamoplusSdk = new SdkBuilder(host)
-                .withHttpConfiguration(HTTP_CONFIGURATION)
-                .withCredentialsProvider(
-                        new SdkBuilder.CredentialsProviderBuilder()
-                                .withBasicAuthCredentialsProviderBuilder()
-                                .withUsername("root")
-                                .withPassword("12345")
-                                .build())
-                .build();
-    }
+    private SDK sdk = Clients.getIntance().getAdminClient();
+
 
     @DisplayName("Test create collections")
     @Test
@@ -55,10 +38,10 @@ public class AdminTest {
         Collection categoryCollection = getCollection("id", "category");
         Collection bookCollection = getCollection("isbn", "book");
 
-        Either<Collection, SdkException> collectionResult = dynamoplusSdk.createCollection(categoryCollection);
+        Either<Collection, SdkException> collectionResult = sdk.createCollection(categoryCollection);
         assertCollectionMatches(collectionResult, "category", "id");
 
-        Either<Collection, SdkException> bookResult = dynamoplusSdk.createCollection(bookCollection);
+        Either<Collection, SdkException> bookResult = sdk.createCollection(bookCollection);
         assertCollectionMatches(bookResult, "book", "isbn");
 
     }
@@ -74,75 +57,90 @@ public class AdminTest {
         testIndex("book", "book__category.name", Collections.singletonList("category.name"), getCollection("id", "book"));
     }
 
-    @DisplayName("Test create documents")
+
+    @DisplayName("Create client authorization API key read only")
     @Test
     @Order(3)
-    void createDocuments() {
-        testCreateCategory(PULP);
-        testCreateCategory(THRILLER);
-        testCreateBook(PULP, "Fight Club", "Chuck Palhaniuk");
-        testCreateBook(PULP, "Choke", "Chuck Palhaniuk");
-        testCreateBook(THRILLER, "Män som hatar kvinnor", "Stieg Larsson");
-        testCreateBook(PULP, "Pulp", "Charles Bukowski");
-        testCreateBook(PULP, "Filth", "Irvine Welsh");
+    void createClientAuthorizationApiKeyReadOnly() {
+        List<ClientScope> scopes = ClientScope.READ.stream().map(clientScopeType -> new ClientScope("category", clientScopeType)).collect(Collectors.toList());
+        String clientIdApiKeyReadOnly = Clients.getIntance().getClientIdApiKeyReadOnly();
+        String keyId = Clients.getIntance().getKeyId();
+        ClientAuthorizationApiKey clientAuthorization = new ClientAuthorizationApiKey(clientIdApiKeyReadOnly, scopes, keyId, Collections.emptyList());
+        testClientAuthorizationApiKey(clientAuthorization);
     }
 
-    @DisplayName("Test query documents")
+    @DisplayName("Create client authorization API key")
     @Test
     @Order(4)
-    void queryDocuments() {
-        Either<PaginatedResult<Category>, SdkException> result = dynamoplusSdk.queryByIndex(
-                "category",
-                "category__name",
-                new QueryBuilder<Category>()
-                        .matches(Category.builder().name("Pulp").build())
-                        .build(),
-                Category.class);
+    void createClientAuthorizationApiKey() {
+        List<ClientScope> scopes = Stream.concat(
+                ClientScope.READ_WRITE.stream().map(clientScopeType -> new ClientScope("category", clientScopeType)),
+                ClientScope.READ.stream().map(clientScopeType -> new ClientScope("book", clientScopeType))
+        ).collect(Collectors.toList());
+        String clientIdApiKey = Clients.getIntance().getClientIdApiKey();
+        String keyId = Clients.getIntance().getKeyId();
+        ClientAuthorizationApiKey clientAuthorization = new ClientAuthorizationApiKey(clientIdApiKey, scopes, keyId, Collections.emptyList());
+        testClientAuthorizationApiKey(clientAuthorization);
+    }
+
+
+    @DisplayName("Create client authorization http signature read only")
+    @Test
+    @Order(5)
+    void createClientAuthorizationHttpSignatureReadOnly() {
+        List<ClientScope> scopes = ClientScope.READ.stream().map(clientScopeType -> new ClientScope("book", clientScopeType)).collect(Collectors.toList());
+        String clientIdHttpSignatureReadOnly = Clients.getIntance().getClientIdHttpSignatureReadOnly();
+        String publicKey = Clients.getIntance().getPublicKey();
+        ClientAuthorizationHttpSignature clientAuthorization = new ClientAuthorizationHttpSignature(clientIdHttpSignatureReadOnly, scopes, publicKey);
+        testClientAuthorizationHttpSignature(clientAuthorization);
+    }
+
+    @DisplayName("Create client authorization http signature")
+    @Test
+    @Order(6)
+    void createClientAuthorizationHttpSignature() {
+        List<ClientScope> scopes = Stream.concat(
+                ClientScope.READ_WRITE.stream().map(clientScopeType -> new ClientScope("book", clientScopeType)),
+                ClientScope.READ.stream().map(clientScopeType -> new ClientScope("category", clientScopeType))
+        ).collect(Collectors.toList());
+        String clientIdHttpSignature = Clients.getIntance().getClientIdHttpSignature();
+        String publicKey = Clients.getIntance().getPublicKey();
+        ClientAuthorizationHttpSignature clientAuthorization = new ClientAuthorizationHttpSignature(clientIdHttpSignature, scopes, publicKey);
+        testClientAuthorizationHttpSignature(clientAuthorization);
+    }
+
+    @DisplayName("Get client api key")
+    @Test
+    @Order(7)
+    void getClientApiKey() {
+        String clientIdApiKey = Clients.getIntance().getClientIdApiKey();
+        Either<ClientAuthorizationApiKey, SdkException> result = sdk.getClientAuthorizationApiKey(clientIdApiKey);
         result.error().ifPresent(e -> fail(e.getMessage(), e));
         assertThat(result.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(r -> r.getData().size() == 1, "expected size 1"))
-                .hasValueSatisfying(new Condition<>(r -> r.getLastKey() == null, "expected no other results"))
-                .hasValueSatisfying(new Condition<>(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName())), "expected category found"));
+                .get()
+                .matches(c -> c.getType().equals(ClientAuthorization.ClientAuthorizationType.api_key));
     }
 
 
-    private void testCreateCategory(Category category) {
-        Either<Category, SdkException> documentResult1 = dynamoplusSdk.createDocument("category",
-                category,
-                Category.class);
-        documentResult1.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(documentResult1.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(c -> c.getName().equals(category.getName()), "name must match"));
+    private void testClientAuthorizationApiKey(ClientAuthorizationApiKey clientAuthorization) {
+        Either<ClientAuthorizationApiKey, SdkException> result = sdk.createClientAuthorizationApiKey(clientAuthorization);
+        result.error().ifPresent(e -> fail(e.getMessage(), e));
+        assertThat(result.ok())
+                .get()
+                .matches(c -> c.getClientId().equals(clientAuthorization.getClientId()));
     }
 
-    private void testCreateBook(Category category, String title, String author) {
-        Either<Book, SdkException> documentResult2 = dynamoplusSdk.createDocument("book",
-                Book.builder()
-                        .isbn(getRandomIsbn())
-                        .title(title)
-                        .author(author)
-                        .category(category)
-                        .build(),
-                Book.class);
-        documentResult2.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(documentResult2.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(c -> c.getTitle().equals(title), "title must match"))
-                .hasValueSatisfying(new Condition<>(c -> c.getAuthor().equals(author), "author must match"));
+    private void testClientAuthorizationHttpSignature(ClientAuthorizationHttpSignature clientAuthorization) {
+        Either<ClientAuthorizationHttpSignature, SdkException> result = sdk.createClientAuthorizationHttpSignature(clientAuthorization);
+        result.error().ifPresent(e -> fail(e.getMessage(), e));
+        assertThat(result.ok())
+                .get()
+                .matches(c -> c.getClientId().equals(clientAuthorization.getClientId()));
     }
 
-    private String getRandomIsbn() {
-        return IntStream.range(0, 13)
-                .mapToObj(i -> new Random().nextInt(NUMBERS.length()))
-                .map(NUMBERS::charAt)
-                .map(c -> c + "")
-                .collect(Collectors.joining());
-    }
 
     private void testIndex(String category, String name, List<String> conditions, Collection collection) {
-        Either<Index, SdkException> resultCreateIndex1 = dynamoplusSdk.createIndex(new IndexBuilder()
+        Either<Index, SdkException> resultCreateIndex1 = sdk.createIndex(new IndexBuilder()
                 .uid(UUID.randomUUID())
                 .collection(collection)
                 .name(name)
