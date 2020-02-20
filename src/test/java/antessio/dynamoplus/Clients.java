@@ -45,15 +45,18 @@ public class Clients {
         publicKey = "-----BEGIN RSA PUBLIC KEY-----\n" +
                 encoder.encodeToString(pub.getEncoded()) +
                 "\n-----END RSA PUBLIC KEY-----\n";
-        String host = Optional.ofNullable(System.getenv("dynamoplus.host")).orElse("http://localhost:3000");
+        String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
+        String root = Optional.ofNullable(System.getenv("DYNAMOPLUS_ROOT")).orElse("root");
+        String password = Optional.ofNullable(System.getenv("DYNAMOPLUS_PASSWORD")).orElse("12345");
         System.out.println("host = " + host);
+        System.out.println("root = " + root);
         adminClient = new SdkBuilder(host)
                 .withHttpConfiguration(HTTP_CONFIGURATION)
                 .withCredentialsProvider(
                         new SdkBuilder.CredentialsProviderBuilder()
                                 .withBasicAuthCredentialsProviderBuilder()
-                                .withUsername("root")
-                                .withPassword("12345")
+                                .withUsername(root)
+                                .withPassword(password)
                                 .build())
                 .build();
     }
@@ -107,7 +110,7 @@ public class Clients {
     public SDK createClientApiKey(String clientId, String apiKey, List<ClientScope> scopes) {
         ClientAuthorizationApiKey clientAuthorization = new ClientAuthorizationApiKey(clientId, scopes, apiKey, Collections.emptyList());
         adminClient.createClientAuthorizationApiKey(clientAuthorization);
-        String host = Optional.ofNullable(System.getenv("dynamoplus.host")).orElse("http://localhost:3000");
+        String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
         return new SdkBuilder(host)
                 .withHttpConfiguration(HTTP_CONFIGURATION)
                 .withCredentialsProvider(
@@ -122,7 +125,7 @@ public class Clients {
     public SDK createHttpSignature(String clientId, List<ClientScope> scopes) {
         ClientAuthorizationHttpSignature clientAuthorization = new ClientAuthorizationHttpSignature(clientId, scopes, publicKey);
         adminClient.createClientAuthorizationHttpSignature(clientAuthorization);
-        String host = Optional.ofNullable(System.getenv("dynamoplus.host")).orElse("http://localhost:3000");
+        String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
         return new SdkBuilder(host)
                 .withHttpConfiguration(HTTP_CONFIGURATION)
                 .withCredentialsProvider(
