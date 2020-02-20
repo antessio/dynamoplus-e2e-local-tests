@@ -9,7 +9,6 @@ Note:
 Dynamoplus could be installed either on localhost or on AWS. Running the test against an AWS installation you might encours in extra costs depending on the workload and your configuration.
 
 
-This image includes https://github.com/vishnubob/wait-for-it. 
 
 
 # Usage
@@ -45,5 +44,4 @@ mvn clean test
 
 to run all the test suite
 
-## Docker
 

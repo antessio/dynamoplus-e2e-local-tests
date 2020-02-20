@@ -12,5 +12,10 @@ if [[ -z "${DYNAMOPLUS_PASSWORD}" ]]; then
   export DYNAMOPLUS_PASSWORD="root"
 fi
 
+echo "Calling system info $DYNAMOPLUS_HOST/system/info"
+until $(curl --output /dev/null --silent --head --fail "$DYNAMOPLUS_HOST/system/info"); do
+    printf '.'
+    sleep 5
+done
 
-mvn clean test -f $1
+mvn clean test -q -f $1
