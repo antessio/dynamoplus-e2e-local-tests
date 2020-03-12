@@ -47,15 +47,14 @@ public class HttpSignatureClientTest {
                         .map(clientScopeType -> new ClientScope("book", clientScopeType))
                         .collect(toList()));
         SDK clientReadOnlyCategory = Clients.getIntance().createHttpSignature(
-                "client-id-books-readonly-" + now,
+                "client-id-category-readonly-" + now,
                 ClientScope.READ.stream()
                         .map(clientScopeType -> new ClientScope("category", clientScopeType))
                         .collect(toList()));
-        Supplier<RuntimeException> unableToRunTheTest = () -> new RuntimeException("unable to run the test");
-        List<Category> categories = clientReadOnlyCategory.queryAll("categories", null, null, Category.class)
-                .ok()
-                .map(PaginatedResult::getData)
-                .orElseThrow(unableToRunTheTest);
+        Either<List<Category>, SdkException> eitherCategories = clientReadOnlyCategory.queryAll("category", null, null, Category.class)
+                .mapOk(PaginatedResult::getData);
+        Supplier<RuntimeException> unableToRunTheTest = () -> eitherCategories.error().map(RuntimeException::new).orElseGet(() -> new RuntimeException("unable to run the test"));
+        List<Category> categories = eitherCategories.ok().orElseThrow(unableToRunTheTest);
         PULP = categories.stream().filter(c -> c.getName().equalsIgnoreCase("pulp")).findFirst().orElseThrow(unableToRunTheTest);
         THRILLER = categories.stream().filter(c -> c.getName().equalsIgnoreCase("thriller")).findFirst().orElseThrow(unableToRunTheTest);
 
