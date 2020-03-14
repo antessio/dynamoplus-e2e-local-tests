@@ -36,6 +36,7 @@ public class HttpSignatureClientTest {
     @BeforeAll
     public static void init() {
         long now = System.currentTimeMillis();
+        SDK adminClient = Clients.getIntance().getAdminClient();
         List<ClientScope> scopes = ClientScope.READ_WRITE.stream()
                 .map(clientScopeType -> new ClientScope("book", clientScopeType))
                 .collect(toList());
@@ -47,19 +48,31 @@ public class HttpSignatureClientTest {
                 ClientScope.READ.stream()
                         .map(clientScopeType -> new ClientScope("book", clientScopeType))
                         .collect(toList()));
-        SDK clientReadOnlyCategory = Clients.getIntance().createHttpSignature(
-                "client-id-category-readonly-" + now,
-                ClientScope.READ.stream()
-                        .map(clientScopeType -> new ClientScope("category", clientScopeType))
-                        .collect(toList()));
-        Either<List<Category>, SdkException> eitherCategories = clientReadOnlyCategory.queryAll("category", null, null, Category.class)
+//        SDK clientReadOnlyCategory = Clients.getIntance().createHttpSignature(
+//                "client-id-category-readonly-" + now,
+//                ClientScope.READ.stream()
+//                        .map(clientScopeType -> new ClientScope("category", clientScopeType))
+//                        .collect(toList()));
+        Either<List<Category>, SdkException> eitherCategories = adminClient.queryAll("category", null, null, Category.class)
                 .mapOk(PaginatedResult::getData);
         Supplier<RuntimeException> unableToRunTheTest = () -> eitherCategories.error().map(RuntimeException::new).orElseGet(() -> new RuntimeException("unable to run the test"));
         List<Category> categories = eitherCategories.ok().orElseThrow(unableToRunTheTest);
-        PULP = categories.stream().filter(c -> c.getName().equalsIgnoreCase("pulp")).findFirst().orElseThrow(unableToRunTheTest);
-        THRILLER = categories.stream().filter(c -> c.getName().equalsIgnoreCase("thriller")).findFirst().orElseThrow(unableToRunTheTest);
-
-        SDK adminClient = Clients.getIntance().getAdminClient();
+        PULP = categories
+                .stream()
+                .filter(c -> c.getName().equalsIgnoreCase("Pulp"))
+                .findFirst()
+                .orElseGet(() -> adminClient.createDocument("category", Category.builder().name("Pulp").build(), Category.class)
+                        .ok()
+                        .orElseThrow(unableToRunTheTest)
+                );
+        THRILLER = categories
+                .stream()
+                .filter(c -> c.getName().equalsIgnoreCase("Thriller"))
+                .findFirst()
+                .orElseGet(() -> adminClient.createDocument("category", Category.builder().name("Thriller").build(), Category.class)
+                        .ok()
+                        .orElseThrow(unableToRunTheTest)
+                );
         Either<PaginatedResult<Book>, SdkException> eitherBooksOrError = adminClient.queryAll("book", 20, null, Book.class);
         eitherBooksOrError
                 .mapOk(PaginatedResult::getData)
