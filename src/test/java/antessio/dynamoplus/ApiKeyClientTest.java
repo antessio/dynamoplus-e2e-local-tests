@@ -21,6 +21,9 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ApiKeyClientTest {
 
+    public static final String SUFFIX = "__api_key_test";
+    public static final String CATEGORY_COLLECTION_NAME = String.format("category_%s", SUFFIX);
+    public static final String BOOK_COLLECTION_NAME = String.format("book_%s", SUFFIX);
     private static SDK clientReadWrite;
     private static SDK clientReadOnly;
     public static final Category PULP = Category.builder().id(UUID.randomUUID().toString()).name("Pulp").build();
@@ -30,7 +33,7 @@ public class ApiKeyClientTest {
     public static void init() {
         long now = System.currentTimeMillis();
         List<ClientScope> scopes = ClientScope.READ_WRITE.stream()
-                .map(clientScopeType -> new ClientScope("category", clientScopeType))
+                .map(clientScopeType -> new ClientScope(CATEGORY_COLLECTION_NAME, clientScopeType))
                 .collect(Collectors.toList());
         clientReadWrite = Clients.getIntance().createClientApiKey(
                 "client-id-categories-rw-" + now,
@@ -40,8 +43,14 @@ public class ApiKeyClientTest {
                 "client-id-categories-readonly-" + now,
                 "api-key-readonly-" + now,
                 ClientScope.READ.stream()
-                        .map(clientScopeType -> new ClientScope("category", clientScopeType))
+                        .map(clientScopeType -> new ClientScope(CATEGORY_COLLECTION_NAME, clientScopeType))
                         .collect(Collectors.toList()));
+        DynamoPlusService.getInstance().setup(SUFFIX);
+    }
+
+    @AfterAll
+    public static void clean() {
+        DynamoPlusService.getInstance().cleanup(SUFFIX);
     }
 
     @DisplayName("Test create documents")
@@ -57,7 +66,7 @@ public class ApiKeyClientTest {
     @Order(2)
     void queryAllCategories() {
         Either<PaginatedResult<Category>, SdkException> result = clientReadWrite.queryAll(
-                "category",
+                CATEGORY_COLLECTION_NAME,
                 null,
                 null,
                 Category.class);
@@ -74,7 +83,7 @@ public class ApiKeyClientTest {
     @Order(2)
     void queryCategoriesByName() {
         Either<PaginatedResult<Category>, SdkException> result = clientReadWrite.queryByIndex(
-                "category",
+                CATEGORY_COLLECTION_NAME,
                 "category__name",
                 new QueryBuilder<Category>()
                         .matches(Category.builder().name("Pulp").build())
@@ -93,7 +102,7 @@ public class ApiKeyClientTest {
     @Test
     @Order(3)
     void createForbidden() {
-        Either<Category, SdkException> documentResult1 = clientReadOnly.createDocument("category",
+        Either<Category, SdkException> documentResult1 = clientReadOnly.createDocument(CATEGORY_COLLECTION_NAME,
                 PULP,
                 Category.class);
         assertThat(documentResult1.error())
@@ -108,7 +117,7 @@ public class ApiKeyClientTest {
     @Order(4)
     void queryForbidden() {
 
-        Either<PaginatedResult<Book>, SdkException> result = clientReadWrite.queryAll("book", null, null, Book.class);
+        Either<PaginatedResult<Book>, SdkException> result = clientReadWrite.queryAll(BOOK_COLLECTION_NAME, null, null, Book.class);
         assertThat(result.error())
                 .get()
                 .matches(e -> e instanceof SdkHttpException)
@@ -117,7 +126,7 @@ public class ApiKeyClientTest {
     }
 
     private void testCreateCategory(Category category) {
-        Either<Category, SdkException> documentResult1 = clientReadWrite.createDocument("category",
+        Either<Category, SdkException> documentResult1 = clientReadWrite.createDocument(CATEGORY_COLLECTION_NAME,
                 category,
                 Category.class);
         documentResult1.error().ifPresent(e -> fail(e.getMessage(), e));

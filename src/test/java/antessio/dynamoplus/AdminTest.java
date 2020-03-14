@@ -27,6 +27,9 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class AdminTest {
 
+    public static final String CATEGORY_COLLECTION_NAME = String.format("category_%s", AdminTest.class.getName());
+    public static final String BOOK_COLLECTION_NAME = String.format("book_%s", AdminTest.class.getName());
+
     private SDK sdk = Clients.getIntance().getAdminClient();
 
 
@@ -35,14 +38,14 @@ public class AdminTest {
     @Order(1)
     void testCreateCollections() {
 
-        Collection categoryCollection = getCollection("id", "category");
-        Collection bookCollection = getCollection("isbn", "book");
+        Collection categoryCollection = getCollection("id", CATEGORY_COLLECTION_NAME);
+        Collection bookCollection = getCollection("isbn", BOOK_COLLECTION_NAME);
 
         Either<Collection, SdkException> collectionResult = sdk.createCollection(categoryCollection);
-        assertCollectionMatches(collectionResult, "category", "id");
+        assertCollectionMatches(collectionResult, CATEGORY_COLLECTION_NAME, "id");
 
         Either<Collection, SdkException> bookResult = sdk.createCollection(bookCollection);
-        assertCollectionMatches(bookResult, "book", "isbn");
+        assertCollectionMatches(bookResult, BOOK_COLLECTION_NAME, "isbn");
 
     }
 
@@ -51,10 +54,10 @@ public class AdminTest {
     @Test
     @Order(2)
     void testCreateIndexes() {
-        testIndex("category", "category__name", Collections.singletonList("name"), getCollection("id", "category"));
-        testIndex("book", "book__author", Collections.singletonList("author"), getCollection("id", "book"));
-        testIndex("book", "book__title", Collections.singletonList("title"), getCollection("id", "book"));
-        testIndex("book", "book__category.name", Collections.singletonList("category.name"), getCollection("id", "book"));
+        testIndex(CATEGORY_COLLECTION_NAME, "category__name", Collections.singletonList("name"), getCollection("id", CATEGORY_COLLECTION_NAME));
+        testIndex(BOOK_COLLECTION_NAME, "book__author", Collections.singletonList("author"), getCollection("id", BOOK_COLLECTION_NAME));
+        testIndex(BOOK_COLLECTION_NAME, "book__title", Collections.singletonList("title"), getCollection("id", BOOK_COLLECTION_NAME));
+        testIndex(BOOK_COLLECTION_NAME, "book__category.name", Collections.singletonList("category.name"), getCollection("id", BOOK_COLLECTION_NAME));
     }
 
 
@@ -62,7 +65,7 @@ public class AdminTest {
     @Test
     @Order(3)
     void createClientAuthorizationApiKeyReadOnly() {
-        List<ClientScope> scopes = ClientScope.READ.stream().map(clientScopeType -> new ClientScope("category", clientScopeType)).collect(Collectors.toList());
+        List<ClientScope> scopes = ClientScope.READ.stream().map(clientScopeType -> new ClientScope(CATEGORY_COLLECTION_NAME, clientScopeType)).collect(Collectors.toList());
         String clientIdApiKeyReadOnly = Clients.getIntance().getClientIdApiKeyReadOnly();
         String keyId = Clients.getIntance().getKeyId();
         ClientAuthorizationApiKey clientAuthorization = new ClientAuthorizationApiKey(clientIdApiKeyReadOnly, scopes, keyId, Collections.emptyList());
@@ -74,8 +77,8 @@ public class AdminTest {
     @Order(4)
     void createClientAuthorizationApiKey() {
         List<ClientScope> scopes = Stream.concat(
-                ClientScope.READ_WRITE.stream().map(clientScopeType -> new ClientScope("category", clientScopeType)),
-                ClientScope.READ.stream().map(clientScopeType -> new ClientScope("book", clientScopeType))
+                ClientScope.READ_WRITE.stream().map(clientScopeType -> new ClientScope(CATEGORY_COLLECTION_NAME, clientScopeType)),
+                ClientScope.READ.stream().map(clientScopeType -> new ClientScope(BOOK_COLLECTION_NAME, clientScopeType))
         ).collect(Collectors.toList());
         String clientIdApiKey = Clients.getIntance().getClientIdApiKey();
         String keyId = Clients.getIntance().getKeyId();
@@ -88,7 +91,7 @@ public class AdminTest {
     @Test
     @Order(5)
     void createClientAuthorizationHttpSignatureReadOnly() {
-        List<ClientScope> scopes = ClientScope.READ.stream().map(clientScopeType -> new ClientScope("book", clientScopeType)).collect(Collectors.toList());
+        List<ClientScope> scopes = ClientScope.READ.stream().map(clientScopeType -> new ClientScope(BOOK_COLLECTION_NAME, clientScopeType)).collect(Collectors.toList());
         String clientIdHttpSignatureReadOnly = Clients.getIntance().getClientIdHttpSignatureReadOnly();
         String publicKey = Clients.getIntance().getPublicKey();
         ClientAuthorizationHttpSignature clientAuthorization = new ClientAuthorizationHttpSignature(clientIdHttpSignatureReadOnly, scopes, publicKey);
@@ -100,8 +103,8 @@ public class AdminTest {
     @Order(6)
     void createClientAuthorizationHttpSignature() {
         List<ClientScope> scopes = Stream.concat(
-                ClientScope.READ_WRITE.stream().map(clientScopeType -> new ClientScope("book", clientScopeType)),
-                ClientScope.READ.stream().map(clientScopeType -> new ClientScope("category", clientScopeType))
+                ClientScope.READ_WRITE.stream().map(clientScopeType -> new ClientScope(BOOK_COLLECTION_NAME, clientScopeType)),
+                ClientScope.READ.stream().map(clientScopeType -> new ClientScope(CATEGORY_COLLECTION_NAME, clientScopeType))
         ).collect(Collectors.toList());
         String clientIdHttpSignature = Clients.getIntance().getClientIdHttpSignature();
         String publicKey = Clients.getIntance().getPublicKey();

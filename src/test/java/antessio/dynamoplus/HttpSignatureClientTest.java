@@ -5,6 +5,7 @@ import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
+import antessio.dynamoplus.sdk.domain.system.collection.CollectionBuilder;
 import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
@@ -24,6 +25,11 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class HttpSignatureClientTest {
+
+    public static final String SUFFIX = "__http_signature_test";
+    public static final String CATEGORY_COLLECTION_NAME = String.format("category_%s", SUFFIX);
+    public static final String BOOK_COLLECTION_NAME = String.format("book_%s", SUFFIX);
+
     private final static String NUMBERS = "0123456789";
     public static final String CHUCK_PALHANIUK = "Chuck Palhaniuk";
 
@@ -38,7 +44,7 @@ public class HttpSignatureClientTest {
         long now = System.currentTimeMillis();
         SDK adminClient = Clients.getIntance().getAdminClient();
         List<ClientScope> scopes = ClientScope.READ_WRITE.stream()
-                .map(clientScopeType -> new ClientScope("book", clientScopeType))
+                .map(clientScopeType -> new ClientScope(BOOK_COLLECTION_NAME, clientScopeType))
                 .collect(toList());
         clientReadWrite = Clients.getIntance().createHttpSignature(
                 "client-id-books-rw-" + now,
@@ -46,14 +52,11 @@ public class HttpSignatureClientTest {
         clientReadOnly = Clients.getIntance().createHttpSignature(
                 "client-id-books-readonly-" + now,
                 ClientScope.READ.stream()
-                        .map(clientScopeType -> new ClientScope("book", clientScopeType))
+                        .map(clientScopeType -> new ClientScope(BOOK_COLLECTION_NAME, clientScopeType))
                         .collect(toList()));
-//        SDK clientReadOnlyCategory = Clients.getIntance().createHttpSignature(
-//                "client-id-category-readonly-" + now,
-//                ClientScope.READ.stream()
-//                        .map(clientScopeType -> new ClientScope("category", clientScopeType))
-//                        .collect(toList()));
-        Either<List<Category>, SdkException> eitherCategories = adminClient.queryAll("category", null, null, Category.class)
+
+        DynamoPlusService.getInstance().setup(SUFFIX);
+        Either<List<Category>, SdkException> eitherCategories = adminClient.queryAll(CATEGORY_COLLECTION_NAME, null, null, Category.class)
                 .mapOk(PaginatedResult::getData);
         Supplier<RuntimeException> unableToRunTheTest = () -> eitherCategories.error().map(RuntimeException::new).orElseGet(() -> new RuntimeException("unable to run the test"));
         List<Category> categories = eitherCategories.ok().orElseThrow(unableToRunTheTest);
@@ -61,7 +64,7 @@ public class HttpSignatureClientTest {
                 .stream()
                 .filter(c -> c.getName().equalsIgnoreCase("Pulp"))
                 .findFirst()
-                .orElseGet(() -> adminClient.createDocument("category", Category.builder().name("Pulp").build(), Category.class)
+                .orElseGet(() -> adminClient.createDocument(CATEGORY_COLLECTION_NAME, Category.builder().name("Pulp").build(), Category.class)
                         .ok()
                         .orElseThrow(unableToRunTheTest)
                 );
@@ -69,18 +72,21 @@ public class HttpSignatureClientTest {
                 .stream()
                 .filter(c -> c.getName().equalsIgnoreCase("Thriller"))
                 .findFirst()
-                .orElseGet(() -> adminClient.createDocument("category", Category.builder().name("Thriller").build(), Category.class)
+                .orElseGet(() -> adminClient.createDocument(CATEGORY_COLLECTION_NAME, Category.builder().name("Thriller").build(), Category.class)
                         .ok()
                         .orElseThrow(unableToRunTheTest)
                 );
-        Either<PaginatedResult<Book>, SdkException> eitherBooksOrError = adminClient.queryAll("book", 20, null, Book.class);
+        Either<PaginatedResult<Book>, SdkException> eitherBooksOrError = adminClient.queryAll(BOOK_COLLECTION_NAME, 20, null, Book.class);
         eitherBooksOrError
                 .mapOk(PaginatedResult::getData)
                 .ok()
                 .orElse(Collections.emptyList())
-                .forEach(b -> adminClient.deleteDocument(b.getIsbn(), "book"));
+                .forEach(b -> adminClient.deleteDocument(b.getIsbn(), BOOK_COLLECTION_NAME));
+    }
 
-
+    @AfterAll
+    public static void clean() {
+        DynamoPlusService.getInstance().cleanup(SUFFIX);
     }
 
     @DisplayName("Test create documents")
@@ -99,7 +105,7 @@ public class HttpSignatureClientTest {
     @Order(2)
     void queryAllCategories() {
         Either<PaginatedResult<Book>, SdkException> result = clientReadWrite.queryAll(
-                "book",
+                BOOK_COLLECTION_NAME,
                 null,
                 null,
                 Book.class);
@@ -124,7 +130,7 @@ public class HttpSignatureClientTest {
     @Order(3)
     void queryBooksByCategory() {
         Either<PaginatedResult<Book>, SdkException> result = clientReadWrite.queryByIndex(
-                "book",
+                BOOK_COLLECTION_NAME,
                 "book__category.name",
                 new QueryBuilder<Book>()
                         .matches(Book.builder().category(Category.builder().name(THRILLER.getName()).build()).build())
@@ -147,7 +153,7 @@ public class HttpSignatureClientTest {
     @Order(3)
     void queryBooksByAuthor() {
         Either<PaginatedResult<Book>, SdkException> result = clientReadWrite.queryByIndex(
-                "book",
+                BOOK_COLLECTION_NAME,
                 "book__author",
                 new QueryBuilder<Book>()
                         .matches(Book.builder().author(CHUCK_PALHANIUK).build())
@@ -156,14 +162,13 @@ public class HttpSignatureClientTest {
         result.error().ifPresent(e -> fail(e.getMessage(), e));
         assertThat(result.ok())
                 .get()
-                .matches(r -> r.getData().size() == 3, "expected size 3 ")
+                .matches(r -> r.getData().size() == 2, "expected size 3 ")
                 .matches(r -> r.getLastKey() == null, "expected no other results");
         assertThat(result.ok().map(PaginatedResult::getData).get())
                 .extracting(b -> tuple(b.getAuthor(), b.getTitle()))
                 .contains(
                         tuple("Fight Club", CHUCK_PALHANIUK),
-                        tuple("Choke", CHUCK_PALHANIUK),
-                        tuple("Pulp", "Charles Bukowski")
+                        tuple("Choke", CHUCK_PALHANIUK)
                 );
     }
 
@@ -171,7 +176,7 @@ public class HttpSignatureClientTest {
     @Test
     @Order(3)
     void createForbidden() {
-        Either<Book, SdkException> documentResult1 = clientReadOnly.createDocument("book",
+        Either<Book, SdkException> documentResult1 = clientReadOnly.createDocument(BOOK_COLLECTION_NAME,
                 Book.builder()
                         .isbn(getRandomIsbn())
                         .title("Survivor")
@@ -191,7 +196,7 @@ public class HttpSignatureClientTest {
     @Order(4)
     void queryForbidden() {
 
-        Either<PaginatedResult<Category>, SdkException> result = clientReadWrite.queryAll("category", null, null, Category.class);
+        Either<PaginatedResult<Category>, SdkException> result = clientReadWrite.queryAll(CATEGORY_COLLECTION_NAME, null, null, Category.class);
         assertThat(result.error())
                 .get()
                 .matches(e -> e instanceof SdkHttpException)
@@ -201,7 +206,7 @@ public class HttpSignatureClientTest {
 
 
     private void testCreateBook(Category category, String title, String author) {
-        Either<Book, SdkException> documentResult2 = clientReadWrite.createDocument("book",
+        Either<Book, SdkException> documentResult2 = clientReadWrite.createDocument(BOOK_COLLECTION_NAME,
                 Book.builder()
                         .isbn(getRandomIsbn())
                         .title(title)
