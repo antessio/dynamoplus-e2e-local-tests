@@ -25,6 +25,7 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class HttpSignatureClientTest {
     private final static String NUMBERS = "0123456789";
+    public static final String CHUCK_PALHANIUK = "Chuck Palhaniuk";
 
     private static SDK clientReadWrite;
     private static SDK clientReadOnly;
@@ -58,6 +59,15 @@ public class HttpSignatureClientTest {
         PULP = categories.stream().filter(c -> c.getName().equalsIgnoreCase("pulp")).findFirst().orElseThrow(unableToRunTheTest);
         THRILLER = categories.stream().filter(c -> c.getName().equalsIgnoreCase("thriller")).findFirst().orElseThrow(unableToRunTheTest);
 
+        SDK adminClient = Clients.getIntance().getAdminClient();
+        Either<PaginatedResult<Book>, SdkException> eitherBooksOrError = adminClient.queryAll("book", 20, null, Book.class);
+        eitherBooksOrError
+                .mapOk(PaginatedResult::getData)
+                .ok()
+                .orElse(Collections.emptyList())
+                .forEach(b -> adminClient.deleteDocument(b.getIsbn(), "book"));
+
+
     }
 
     @DisplayName("Test create documents")
@@ -86,10 +96,10 @@ public class HttpSignatureClientTest {
                 .matches(r -> r.getData().size() == 5, "expected size 5")
                 .matches(r -> r.getLastKey() == null, "expected no other results");
         assertThat(result.ok().map(PaginatedResult::getData).get())
-                .extracting(b -> tuple(b.getAuthor(), b.getTitle()))
+                .extracting(b -> tuple(b.getTitle(), b.getAuthor()))
                 .contains(
-                        tuple("Fight Club", "Chuck Palhaniuk"),
-                        tuple("Choke", "Chuck Palhaniuk"),
+                        tuple("Fight Club", CHUCK_PALHANIUK),
+                        tuple("Choke", CHUCK_PALHANIUK),
                         tuple("Män som hatar kvinnor", "Stieg Larsson"),
                         tuple("Pulp", "Charles Bukowski"),
                         tuple("Filth", "Irvine Welsh")
@@ -113,7 +123,7 @@ public class HttpSignatureClientTest {
                 .matches(r -> r.getData().size() == 1, "expected size 1")
                 .matches(r -> r.getLastKey() == null, "expected no other results");
         assertThat(result.ok().map(PaginatedResult::getData).get())
-                .extracting(b -> tuple(b.getAuthor(), b.getTitle()))
+                .extracting(b -> tuple(b.getTitle(), b.getAuthor()))
                 .contains(
                         tuple("Män som hatar kvinnor", "Stieg Larsson")
                 );
@@ -127,19 +137,19 @@ public class HttpSignatureClientTest {
                 "book",
                 "book__author",
                 new QueryBuilder<Book>()
-                        .matches(Book.builder().author("Chuck Palhaniuk").build())
+                        .matches(Book.builder().author(CHUCK_PALHANIUK).build())
                         .build(),
                 Book.class);
         result.error().ifPresent(e -> fail(e.getMessage(), e));
         assertThat(result.ok())
                 .get()
-                .matches(r -> r.getData().size() == 3, "expected size 3")
+                .matches(r -> r.getData().size() == 3, "expected size 3 ")
                 .matches(r -> r.getLastKey() == null, "expected no other results");
         assertThat(result.ok().map(PaginatedResult::getData).get())
                 .extracting(b -> tuple(b.getAuthor(), b.getTitle()))
                 .contains(
-                        tuple("Fight Club", "Chuck Palhaniuk"),
-                        tuple("Choke", "Chuck Palhaniuk"),
+                        tuple("Fight Club", CHUCK_PALHANIUK),
+                        tuple("Choke", CHUCK_PALHANIUK),
                         tuple("Pulp", "Charles Bukowski")
                 );
     }
@@ -152,7 +162,7 @@ public class HttpSignatureClientTest {
                 Book.builder()
                         .isbn(getRandomIsbn())
                         .title("Survivor")
-                        .author("Chuck Palhaniuk")
+                        .author(CHUCK_PALHANIUK)
                         .category(PULP)
                         .build(),
                 Book.class);
