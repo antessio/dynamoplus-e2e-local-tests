@@ -5,7 +5,6 @@ import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
-import antessio.dynamoplus.sdk.domain.system.collection.CollectionBuilder;
 import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
@@ -165,7 +164,7 @@ public class HttpSignatureClientTest {
                 .matches(r -> r.getData().size() == 2, "expected size 3 ")
                 .matches(r -> r.getLastKey() == null, "expected no other results");
         assertThat(result.ok().map(PaginatedResult::getData).get())
-                .extracting(b -> tuple(b.getAuthor(), b.getTitle()))
+                .extracting(b -> tuple(b.getTitle(), b.getAuthor()))
                 .contains(
                         tuple("Fight Club", CHUCK_PALHANIUK),
                         tuple("Choke", CHUCK_PALHANIUK)
