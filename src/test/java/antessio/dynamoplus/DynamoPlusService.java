@@ -83,7 +83,7 @@ public class DynamoPlusService {
         String CATEGORY_COLLECTION_NAME = String.format("%s_%s", "category", suffix);
         String BOOK_COLLECTION_NAME = String.format("%s_%s", "book", suffix);
 
-        Collection category = this.getOrCreateCollection("id", CATEGORY_COLLECTION_NAME);
+        Collection category = this.getOrCreateCollection("name", CATEGORY_COLLECTION_NAME);
         Collection book = this.getOrCreateCollection("isbn", BOOK_COLLECTION_NAME);
         this.createIndex("category__name", Collections.singletonList("name"), category);
         this.createIndex("book__author", Collections.singletonList("author"), book);

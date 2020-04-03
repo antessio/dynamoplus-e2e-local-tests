@@ -73,7 +73,7 @@ public class ApiKeyClientTest {
         result.error().ifPresent(e -> fail(e.getMessage(), e));
         assertThat(result.ok())
                 .isPresent()
-                .hasValueSatisfying(new Condition<>(r -> r.getData().size() == 2, "expected size 1"))
+                .hasValueSatisfying(new Condition<>(r -> r.getData().size() == 2, "expected size 2"))
                 .hasValueSatisfying(new Condition<>(r -> r.getLastKey() == null, "expected no other results"))
                 .hasValueSatisfying(new Condition<>(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName()) || c.getName().equals(THRILLER.getName())), "expected category found"));
     }

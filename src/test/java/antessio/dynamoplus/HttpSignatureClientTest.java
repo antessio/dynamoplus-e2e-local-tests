@@ -5,11 +5,17 @@ import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
+import antessio.dynamoplus.sdk.domain.system.collection.Collection;
+import antessio.dynamoplus.sdk.domain.system.collection.CollectionBuilder;
 import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
 
-import java.util.*;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -63,18 +69,14 @@ public class HttpSignatureClientTest {
                 .stream()
                 .filter(c -> c.getName().equalsIgnoreCase("Pulp"))
                 .findFirst()
-                .orElseGet(() -> adminClient.createDocument(CATEGORY_COLLECTION_NAME, Category.builder().name("Pulp").build(), Category.class)
-                        .ok()
-                        .orElseThrow(unableToRunTheTest)
-                );
+                .orElseGet(() -> createCategory(adminClient, CATEGORY_COLLECTION_NAME, "Pulp"));
         THRILLER = categories
                 .stream()
                 .filter(c -> c.getName().equalsIgnoreCase("Thriller"))
                 .findFirst()
-                .orElseGet(() -> adminClient.createDocument(CATEGORY_COLLECTION_NAME, Category.builder().name("Thriller").build(), Category.class)
-                        .ok()
-                        .orElseThrow(unableToRunTheTest)
-                );
+                .orElseGet(() ->
+                        Optional.ofNullable(createCategory(adminClient, CATEGORY_COLLECTION_NAME, "Thriller")
+                        ).orElseThrow(unableToRunTheTest));
         Either<PaginatedResult<Book>, SdkException> eitherBooksOrError = adminClient.queryAll(BOOK_COLLECTION_NAME, 20, null, Book.class);
         eitherBooksOrError
                 .mapOk(PaginatedResult::getData)
@@ -82,6 +84,22 @@ public class HttpSignatureClientTest {
                 .orElse(Collections.emptyList())
                 .forEach(b -> adminClient.deleteDocument(b.getIsbn(), BOOK_COLLECTION_NAME));
     }
+
+    private static Category createCategory(SDK adminClient, String collectionName, String thriller) {
+        Either<Category, SdkException> eitherCategory = adminClient.createDocument(collectionName, Category.builder().name(thriller).build(), Category.class);
+        return eitherCategory
+                .ok()
+                .orElseThrow(() -> eitherCategory.error().map(RuntimeException::new).orElseGet(() -> new RuntimeException("unable to create a document of category " + collectionName)));
+    }
+
+//    private static Collection createCollectionIfNotExists(SDK adminClient, String collectionName) {
+//        return adminClient.getCollection(collectionName)
+//                .ok()
+//                .orElseGet(() -> adminClient.createCollection(new CollectionBuilder().idKey("name").name(collectionName).createCollection())
+//                        .ok()
+//                        .orElseThrow(() -> new RuntimeException("Unable to create the collection"))
+//                );
+//    }
 
     @AfterAll
     public static void clean() {
