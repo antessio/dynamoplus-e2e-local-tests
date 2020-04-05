@@ -1,7 +1,13 @@
 package antessio.dynamoplus;
 
+import antessio.dynamoplus.authentication.provider.apikey.ApiKeyCredentialsProviderBuilder;
+import antessio.dynamoplus.authentication.provider.basic.BasicAuthCredentialsProvider;
+import antessio.dynamoplus.authentication.provider.httpsignature.HttpSignatureCredentialsProvider;
+import antessio.dynamoplus.authentication.provider.httpsignature.HttpSignatureCredentialsProviderBuilder;
 import antessio.dynamoplus.http.HttpConfiguration;
+import antessio.dynamoplus.http.okhttp.OkHttpSdkHttpClient;
 import antessio.dynamoplus.sdk.SDK;
+import antessio.dynamoplus.sdk.SDKV2;
 import antessio.dynamoplus.sdk.SdkBuilder;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationApiKey;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationHttpSignature;
@@ -13,7 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class Clients {
-    private SDK adminClient;
+    private SDKV2 adminClient;
     public static final HttpConfiguration HTTP_CONFIGURATION = new HttpConfiguration(30000, 30000, 30000);
     private String clientIdApiKeyReadOnly;
     private String clientIdHttpSignature;
@@ -56,15 +62,7 @@ public class Clients {
         String password = Optional.ofNullable(System.getenv("DYNAMOPLUS_PASSWORD")).orElse("12345");
         System.out.println("host = " + host);
         System.out.println("root = " + root);
-        adminClient = new SdkBuilder(host)
-                .withHttpConfiguration(HTTP_CONFIGURATION)
-                .withCredentialsProvider(
-                        new SdkBuilder.CredentialsProviderBuilder()
-                                .withBasicAuthCredentialsProviderBuilder()
-                                .withUsername(root)
-                                .withPassword(password)
-                                .build())
-                .build();
+        adminClient = new SdkBuilder(host, new OkHttpSdkHttpClient(HTTP_CONFIGURATION, new BasicAuthCredentialsProvider(root, password))).buildV2();
     }
 
     private static Clients instance;
@@ -108,38 +106,33 @@ public class Clients {
         return clientIdHttpSignatureReadOnly;
     }
 
-    public SDK getAdminClient() {
+    public SDKV2 getAdminClient() {
         return adminClient;
     }
 
 
-    public SDK createClientApiKey(String clientId, String apiKey, List<ClientScope> scopes) {
+    public SDKV2 createClientApiKey(String clientId, String apiKey, List<ClientScope> scopes) {
         ClientAuthorizationApiKey clientAuthorization = new ClientAuthorizationApiKey(clientId, scopes, apiKey, Collections.emptyList());
         adminClient.createClientAuthorizationApiKey(clientAuthorization);
         String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
-        return new SdkBuilder(host)
-                .withHttpConfiguration(HTTP_CONFIGURATION)
-                .withCredentialsProvider(
-                        new SdkBuilder.CredentialsProviderBuilder()
-                                .withApiKeyCredentialsProviderBuilder()
-                                .withClientId(clientId)
-                                .withApiKey(apiKey)
-                                .build())
-                .build();
+        return new SdkBuilder(
+                host,
+                new OkHttpSdkHttpClient(HTTP_CONFIGURATION, new ApiKeyCredentialsProviderBuilder()
+                        .withClientId(clientId)
+                        .withApiKey(apiKey)
+                        .build())).buildV2();
     }
 
-    public SDK createHttpSignature(String clientId, List<ClientScope> scopes) {
+    public SDKV2 createHttpSignature(String clientId, List<ClientScope> scopes) {
         ClientAuthorizationHttpSignature clientAuthorization = new ClientAuthorizationHttpSignature(clientId, scopes, publicKey);
         adminClient.createClientAuthorizationHttpSignature(clientAuthorization);
         String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
-        return new SdkBuilder(host)
-                .withHttpConfiguration(HTTP_CONFIGURATION)
-                .withCredentialsProvider(
-                        new SdkBuilder.CredentialsProviderBuilder()
-                                .withHttpSignatureCredentialsProviderBuilder()
-                                .withKeyId(clientId)
-                                .withPrivateKey(getPrivateKey())
-                                .build())
-                .build();
+        return new SdkBuilder(
+                host,
+                new OkHttpSdkHttpClient(HTTP_CONFIGURATION, new HttpSignatureCredentialsProviderBuilder()
+                        .withKeyId(clientId)
+                        .withPrivateKey(getPrivateKey())
+                        .build()))
+                .buildV2();
     }
 }

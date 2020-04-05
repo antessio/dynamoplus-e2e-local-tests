@@ -12,6 +12,7 @@ import org.junit.jupiter.api.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.fail;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
@@ -24,8 +25,8 @@ public class ApiKeyClientTest {
     public static final String SUFFIX = "__api_key_test";
     public static final String CATEGORY_COLLECTION_NAME = String.format("category_%s", SUFFIX);
     public static final String BOOK_COLLECTION_NAME = String.format("book_%s", SUFFIX);
-    private static SDK clientReadWrite;
-    private static SDK clientReadOnly;
+    private static SDKV2 clientReadWrite;
+    private static SDKV2 clientReadOnly;
     public static final Category PULP = Category.builder().id(UUID.randomUUID().toString()).name("Pulp").build();
     public static final Category THRILLER = Category.builder().id(UUID.randomUUID().toString()).name("Thriller").build();
 
@@ -65,36 +66,32 @@ public class ApiKeyClientTest {
     @Test
     @Order(2)
     void queryAllCategories() {
-        Either<PaginatedResult<Category>, SdkException> result = clientReadWrite.queryAll(
+        PaginatedResult<Category> result = clientReadWrite.queryAll(
                 CATEGORY_COLLECTION_NAME,
                 null,
                 null,
                 Category.class);
-        result.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(result.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(r -> r.getData().size() == 2, "expected size 2"))
-                .hasValueSatisfying(new Condition<>(r -> r.getLastKey() == null, "expected no other results"))
-                .hasValueSatisfying(new Condition<>(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName()) || c.getName().equals(THRILLER.getName())), "expected category found"));
+        assertThat(result)
+                .matches(r -> r.getData().size() == 2, "expected size 2")
+                .matches(r -> r.getLastKey() == null, "expected no other results")
+                .matches(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName()) || c.getName().equals(THRILLER.getName())), "expected category found");
     }
 
     @DisplayName("Test query category by name")
     @Test
     @Order(2)
     void queryCategoriesByName() {
-        Either<PaginatedResult<Category>, SdkException> result = clientReadWrite.queryByIndex(
+        PaginatedResult<Category> result = clientReadWrite.queryByIndex(
                 CATEGORY_COLLECTION_NAME,
                 "category__name",
                 new QueryBuilder<Category>()
                         .matches(Category.builder().name("Pulp").build())
                         .build(),
                 Category.class);
-        result.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(result.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(r -> r.getData().size() == 1, "expected size 1"))
-                .hasValueSatisfying(new Condition<>(r -> r.getLastKey() == null, "expected no other results"))
-                .hasValueSatisfying(new Condition<>(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName())), "expected category found"))
+        assertThat(result)
+                .matches(r -> r.getData().size() == 1, "expected size 1")
+                .matches(r -> r.getLastKey() == null, "expected no other results")
+                .matches(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName())), "expected category found")
         ;
     }
 
@@ -102,37 +99,34 @@ public class ApiKeyClientTest {
     @Test
     @Order(3)
     void createForbidden() {
-        Either<Category, SdkException> documentResult1 = clientReadOnly.createDocument(CATEGORY_COLLECTION_NAME,
-                PULP,
-                Category.class);
-        assertThat(documentResult1.error())
-                .get()
-                .matches(e -> e instanceof SdkHttpException)
-                .extracting(e -> (SdkHttpException) e)
-                .matches(e -> e.getHttpCode() == 403);
+
+        assertThatExceptionOfType(SdkException.class)
+                .isThrownBy(() -> clientReadOnly.createDocument(CATEGORY_COLLECTION_NAME,
+                        PULP,
+                        Category.class)
+                )
+                .withCauseInstanceOf(SdkHttpException.class)
+                .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
+
     }
 
     @DisplayName("Test query forbidden")
     @Test
     @Order(4)
     void queryForbidden() {
-
-        Either<PaginatedResult<Book>, SdkException> result = clientReadWrite.queryAll(BOOK_COLLECTION_NAME, null, null, Book.class);
-        assertThat(result.error())
-                .get()
-                .matches(e -> e instanceof SdkHttpException)
-                .extracting(e -> (SdkHttpException) e)
-                .matches(e -> e.getHttpCode() == 403);
+        assertThatExceptionOfType(SdkException.class)
+                .isThrownBy(() -> clientReadWrite.queryAll(BOOK_COLLECTION_NAME, null, null, Book.class)
+                )
+                .withCauseInstanceOf(SdkHttpException.class)
+                .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
     }
 
     private void testCreateCategory(Category category) {
-        Either<Category, SdkException> documentResult1 = clientReadWrite.createDocument(CATEGORY_COLLECTION_NAME,
+        Category documentResult1 = clientReadWrite.createDocument(CATEGORY_COLLECTION_NAME,
                 category,
                 Category.class);
-        documentResult1.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(documentResult1.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(c -> c.getName().equals(category.getName()), "name must match"));
+        assertThat(documentResult1)
+                .matches(c -> c.getName().equals(category.getName()), "name must match");
     }
 
 }

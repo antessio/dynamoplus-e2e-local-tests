@@ -9,7 +9,6 @@ import antessio.dynamoplus.sdk.domain.system.collection.*;
 import antessio.dynamoplus.sdk.domain.system.collection.Collection;
 import antessio.dynamoplus.sdk.domain.system.index.Index;
 import antessio.dynamoplus.sdk.domain.system.index.IndexBuilder;
-import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +17,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.AssertionsForClassTypes.fail;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 /**
@@ -30,7 +28,7 @@ public class AdminTest {
     public static final String CATEGORY_COLLECTION_NAME = String.format("category_%s", AdminTest.class.getName());
     public static final String BOOK_COLLECTION_NAME = String.format("book_%s", AdminTest.class.getName());
 
-    private SDK sdk = Clients.getIntance().getAdminClient();
+    private SDKV2 sdk = Clients.getIntance().getAdminClient();
 
 
     @DisplayName("Test create collections")
@@ -51,10 +49,10 @@ public class AdminTest {
                 ))
                 .createCollection();
 
-        Either<Collection, SdkException> collectionResult = sdk.createCollection(categoryCollection);
+        Collection collectionResult = sdk.createCollection(categoryCollection);
         assertCollectionMatches(collectionResult, CATEGORY_COLLECTION_NAME, "name");
 
-        Either<Collection, SdkException> bookResult = sdk.createCollection(bookCollection);
+        Collection bookResult = sdk.createCollection(bookCollection);
         assertCollectionMatches(bookResult, BOOK_COLLECTION_NAME, "isbn");
 
     }
@@ -135,33 +133,27 @@ public class AdminTest {
     @Order(7)
     void getClientApiKey() {
         String clientIdApiKey = Clients.getIntance().getClientIdApiKey();
-        Either<ClientAuthorizationApiKey, SdkException> result = sdk.getClientAuthorizationApiKey(clientIdApiKey);
-        result.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(result.ok())
-                .get()
+        ClientAuthorizationApiKey result = sdk.getClientAuthorizationApiKey(clientIdApiKey);
+        assertThat(result)
                 .matches(c -> c.getType().equals(ClientAuthorization.ClientAuthorizationType.api_key));
     }
 
 
     private void testClientAuthorizationApiKey(ClientAuthorizationApiKey clientAuthorization) {
-        Either<ClientAuthorizationApiKey, SdkException> result = sdk.createClientAuthorizationApiKey(clientAuthorization);
-        result.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(result.ok())
-                .get()
+        ClientAuthorizationApiKey result = sdk.createClientAuthorizationApiKey(clientAuthorization);
+        assertThat(result)
                 .matches(c -> c.getClientId().equals(clientAuthorization.getClientId()));
     }
 
     private void testClientAuthorizationHttpSignature(ClientAuthorizationHttpSignature clientAuthorization) {
-        Either<ClientAuthorizationHttpSignature, SdkException> result = sdk.createClientAuthorizationHttpSignature(clientAuthorization);
-        result.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(result.ok())
-                .get()
+        ClientAuthorizationHttpSignature result = sdk.createClientAuthorizationHttpSignature(clientAuthorization);
+        assertThat(result)
                 .matches(c -> c.getClientId().equals(clientAuthorization.getClientId()));
     }
 
 
     private void testIndex(String category, String name, List<String> conditions, Collection collection) {
-        Either<Index, SdkException> resultCreateIndex1 = sdk.createIndex(new IndexBuilder()
+        Index resultCreateIndex1 = sdk.createIndex(new IndexBuilder()
                 .uid(UUID.randomUUID())
                 .collection(collection)
                 .name(name)
@@ -185,20 +177,16 @@ public class AdminTest {
                 .fields(Collections.emptyList());
     }
 
-    private void assertIndexMatches(Either<Index, SdkException> indexResult, String collectionName, String indexName) {
-        indexResult.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(indexResult.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(i -> i.getUid() != null, "uid must be present"))
-                .hasValueSatisfying(new Condition<>(i -> i.getCollection().getName().equals(collectionName), "collection name must match"))
-                .hasValueSatisfying(new Condition<>(i -> i.getName().equals(indexName), "index name must match"));
+    private void assertIndexMatches(Index indexResult, String collectionName, String indexName) {
+        assertThat(indexResult)
+                .matches(i -> i.getUid() != null, "uid must be present")
+                .matches(i -> i.getCollection().getName().equals(collectionName), "collection name must match")
+                .matches(i -> i.getName().equals(indexName), "index name must match");
     }
 
-    private void assertCollectionMatches(Either<Collection, SdkException> collectionResult, String collectionName, String idKey) {
-        collectionResult.error().ifPresent(e -> fail(e.getMessage(), e));
-        assertThat(collectionResult.ok())
-                .isPresent()
-                .hasValueSatisfying(new Condition<>(c -> c.getName().equals(collectionName), "collection name must match"))
-                .hasValueSatisfying(new Condition<>(c -> c.getIdKey().equals(idKey), "id name must match"));
+    private void assertCollectionMatches(Collection collectionResult, String collectionName, String idKey) {
+        assertThat(collectionResult)
+                .matches(c -> c.getName().equals(collectionName), "collection name must match")
+                .matches(c -> c.getIdKey().equals(idKey), "id name must match");
     }
 }
