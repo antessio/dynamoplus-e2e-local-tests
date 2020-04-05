@@ -86,7 +86,7 @@ public class DynamoPlusService {
     public void cleanup(String suffix) {
         String CATEGORY_COLLECTION_NAME = String.format("%s_%s", "category", suffix);
         String BOOK_COLLECTION_NAME = String.format("%s_%s", "book", suffix);
-        cleanupCollection(CATEGORY_COLLECTION_NAME, Category.class, () -> "id");
+        cleanupCollection(CATEGORY_COLLECTION_NAME, Category.class, () -> "name");
         cleanupCollection(BOOK_COLLECTION_NAME, Category.class, () -> "isbn");
     }
 }

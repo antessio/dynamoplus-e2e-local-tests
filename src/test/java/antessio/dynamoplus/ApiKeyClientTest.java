@@ -5,7 +5,6 @@ import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
-import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
 
@@ -13,7 +12,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.AssertionsForClassTypes.fail;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 /**
@@ -105,7 +103,7 @@ public class ApiKeyClientTest {
                         PULP,
                         Category.class)
                 )
-                .withCauseInstanceOf(SdkHttpException.class)
+                .isInstanceOf(SdkHttpException.class)
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
 
     }
@@ -117,7 +115,7 @@ public class ApiKeyClientTest {
         assertThatExceptionOfType(SdkException.class)
                 .isThrownBy(() -> clientReadWrite.queryAll(BOOK_COLLECTION_NAME, null, null, Book.class)
                 )
-                .withCauseInstanceOf(SdkHttpException.class)
+                .isInstanceOf(SdkHttpException.class)
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
     }
 

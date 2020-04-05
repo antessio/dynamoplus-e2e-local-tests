@@ -5,12 +5,10 @@ import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
-import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
 
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -18,7 +16,6 @@ import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.AssertionsForClassTypes.fail;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
@@ -176,7 +173,7 @@ public class HttpSignatureClientTest {
                                 .build(),
                         Book.class)
                 )
-                .withCauseInstanceOf(SdkHttpException.class)
+                .isInstanceOf(SdkHttpException.class)
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
 
     }
@@ -188,7 +185,7 @@ public class HttpSignatureClientTest {
         assertThatExceptionOfType(SdkException.class)
                 .isThrownBy(() -> clientReadWrite.queryAll(CATEGORY_COLLECTION_NAME, null, null, Category.class)
                 )
-                .withCauseInstanceOf(SdkHttpException.class)
+                .isInstanceOf(SdkHttpException.class)
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
     }
 
