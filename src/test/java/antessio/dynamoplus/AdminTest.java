@@ -5,8 +5,8 @@ import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthoriza
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationApiKey;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationHttpSignature;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
+import antessio.dynamoplus.sdk.domain.system.collection.*;
 import antessio.dynamoplus.sdk.domain.system.collection.Collection;
-import antessio.dynamoplus.sdk.domain.system.collection.CollectionBuilder;
 import antessio.dynamoplus.sdk.domain.system.index.Index;
 import antessio.dynamoplus.sdk.domain.system.index.IndexBuilder;
 import org.assertj.core.api.Condition;
@@ -38,11 +38,21 @@ public class AdminTest {
     @Order(1)
     void testCreateCollections() {
 
-        Collection categoryCollection = getCollection("id", CATEGORY_COLLECTION_NAME);
-        Collection bookCollection = getCollection("isbn", BOOK_COLLECTION_NAME);
+        Collection categoryCollection = getCollection("name", CATEGORY_COLLECTION_NAME);
+        Collection bookCollection = getCollectionBuilder("isbn", BOOK_COLLECTION_NAME)
+                .fields(Arrays.asList(
+                        buildAttributeNotNull("author", CollectionAttributeType.STRING).build(),
+                        buildAttributeNotNull("title", CollectionAttributeType.STRING).build(),
+                        buildAttributeNotNull("category", CollectionAttributeType.OBJECT)
+                                .attributes(Collections.singletonList(
+                                        buildAttributeNotNull("name", CollectionAttributeType.STRING).build()
+                                ))
+                                .build()
+                ))
+                .createCollection();
 
         Either<Collection, SdkException> collectionResult = sdk.createCollection(categoryCollection);
-        assertCollectionMatches(collectionResult, CATEGORY_COLLECTION_NAME, "id");
+        assertCollectionMatches(collectionResult, CATEGORY_COLLECTION_NAME, "name");
 
         Either<Collection, SdkException> bookResult = sdk.createCollection(bookCollection);
         assertCollectionMatches(bookResult, BOOK_COLLECTION_NAME, "isbn");
@@ -50,14 +60,22 @@ public class AdminTest {
     }
 
 
+    private AttributeBuilder buildAttributeNotNull(String name, CollectionAttributeType type) {
+        return new AttributeBuilder()
+                .attributeName(name)
+                .attributeType(type)
+                .constraints(Collections.singletonList(CollectionAttributeConstraint.NOT_NULL));
+    }
+
+
     @DisplayName("Test create indexes")
     @Test
     @Order(2)
     void testCreateIndexes() {
-        testIndex(CATEGORY_COLLECTION_NAME, "category__name", Collections.singletonList("name"), getCollection("id", CATEGORY_COLLECTION_NAME));
-        testIndex(BOOK_COLLECTION_NAME, "book__author", Collections.singletonList("author"), getCollection("id", BOOK_COLLECTION_NAME));
-        testIndex(BOOK_COLLECTION_NAME, "book__title", Collections.singletonList("title"), getCollection("id", BOOK_COLLECTION_NAME));
-        testIndex(BOOK_COLLECTION_NAME, "book__category.name", Collections.singletonList("category.name"), getCollection("id", BOOK_COLLECTION_NAME));
+        testIndex(CATEGORY_COLLECTION_NAME, "category__name", Collections.singletonList("name"), getCollection("name", CATEGORY_COLLECTION_NAME));
+        testIndex(BOOK_COLLECTION_NAME, "book__author", Collections.singletonList("author"), getCollection("isbn", BOOK_COLLECTION_NAME));
+        testIndex(BOOK_COLLECTION_NAME, "book__title", Collections.singletonList("title"), getCollection("isbn", BOOK_COLLECTION_NAME));
+        testIndex(BOOK_COLLECTION_NAME, "book__category.name", Collections.singletonList("category.name"), getCollection("isbn", BOOK_COLLECTION_NAME));
     }
 
 
@@ -156,11 +174,15 @@ public class AdminTest {
 
 
     private Collection getCollection(String idKey, String collectionName) {
+        return getCollectionBuilder(idKey, collectionName)
+                .createCollection();
+    }
+
+    private CollectionBuilder getCollectionBuilder(String idKey, String collectionName) {
         return new CollectionBuilder()
                 .idKey(idKey)
                 .name(collectionName)
-                .fields(Collections.emptyList())
-                .createCollection();
+                .fields(Collections.emptyList());
     }
 
     private void assertIndexMatches(Either<Index, SdkException> indexResult, String collectionName, String indexName) {
@@ -172,11 +194,11 @@ public class AdminTest {
                 .hasValueSatisfying(new Condition<>(i -> i.getName().equals(indexName), "index name must match"));
     }
 
-    private void assertCollectionMatches(Either<Collection, SdkException> collectionResult, String book, String isbn) {
+    private void assertCollectionMatches(Either<Collection, SdkException> collectionResult, String collectionName, String idKey) {
         collectionResult.error().ifPresent(e -> fail(e.getMessage(), e));
         assertThat(collectionResult.ok())
                 .isPresent()
-                .hasValueSatisfying(new Condition<>(c -> c.getName().equals(book), "collection name must match"))
-                .hasValueSatisfying(new Condition<>(c -> c.getIdKey().equals(isbn), "id name must match"));
+                .hasValueSatisfying(new Condition<>(c -> c.getName().equals(collectionName), "collection name must match"))
+                .hasValueSatisfying(new Condition<>(c -> c.getIdKey().equals(idKey), "id name must match"));
     }
 }
