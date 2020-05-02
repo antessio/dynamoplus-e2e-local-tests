@@ -4,6 +4,8 @@ package antessio.dynamoplus;
 import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
+import antessio.dynamoplus.sdk.domain.conditions.PredicateBuilder;
+import antessio.dynamoplus.sdk.domain.document.query.Query;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
@@ -55,7 +57,7 @@ public class HttpSignatureClientTest {
                         .collect(toList()));
 
         DynamoPlusService.getInstance().setup(SUFFIX);
-        List<Category> categories = adminClient.queryAll(CATEGORY_COLLECTION_NAME, null, null, Category.class).getData();
+        List<Category> categories = adminClient.getAll(CATEGORY_COLLECTION_NAME, null, null, Category.class).getData();
         PULP = categories
                 .stream()
                 .filter(c -> c.getName().equalsIgnoreCase("Pulp"))
@@ -66,7 +68,7 @@ public class HttpSignatureClientTest {
                 .filter(c -> c.getName().equalsIgnoreCase("Thriller"))
                 .findFirst()
                 .orElseGet(() -> createCategory(adminClient, CATEGORY_COLLECTION_NAME, "Thriller"));
-        adminClient.queryAll(BOOK_COLLECTION_NAME, 20, null, Book.class)
+        adminClient.getAll(BOOK_COLLECTION_NAME, 20, null, Book.class)
                 .getData()
                 .forEach(b -> adminClient.deleteDocument(b.getIsbn(), BOOK_COLLECTION_NAME));
     }
@@ -96,14 +98,14 @@ public class HttpSignatureClientTest {
     @Test
     @Order(2)
     void queryAllCategories() {
-        PaginatedResult<Book> result = clientReadWrite.queryAll(
+        PaginatedResult<Book> result = clientReadWrite.getAll(
                 BOOK_COLLECTION_NAME,
                 null,
                 null,
                 Book.class);
         assertThat(result)
                 .matches(r -> r.getData().size() == 5, "expected size 5")
-                .matches(r -> r.getLastKey() == null, "expected no other results");
+                .matches(r -> r.getHasMore() != null && r.getHasMore().equals(Boolean.FALSE), "expected no other results");
 
         assertThat(result.getData())
                 .extracting(b -> tuple(b.getTitle(), b.getAuthor()))
@@ -120,16 +122,15 @@ public class HttpSignatureClientTest {
     @Test
     @Order(3)
     void queryBooksByCategory() {
-        PaginatedResult<Book> result = clientReadWrite.queryByIndex(
+        PaginatedResult<Book> result = clientReadWrite.query(
                 BOOK_COLLECTION_NAME,
-                "book__category.name",
-                new QueryBuilder<Book>()
-                        .matches(Book.builder().category(Category.builder().name(THRILLER.getName()).build()).build())
-                        .build(),
-                Book.class);
+                new Query(new PredicateBuilder().withEq("category.name", THRILLER.getName())),
+                Book.class,
+                null,
+                null);
         assertThat(result)
                 .matches(r -> r.getData().size() == 1, "expected size 1")
-                .matches(r -> r.getLastKey() == null, "expected no other results");
+                .matches(r -> r.getHasMore() != null && r.getHasMore().equals(Boolean.FALSE), "expected no other results");
         assertThat(result.getData())
                 .extracting(b -> tuple(b.getTitle(), b.getAuthor()))
                 .contains(
@@ -141,16 +142,13 @@ public class HttpSignatureClientTest {
     @Test
     @Order(3)
     void queryBooksByAuthor() {
-        PaginatedResult<Book> result = clientReadWrite.queryByIndex(
+        PaginatedResult<Book> result = clientReadWrite.query(
                 BOOK_COLLECTION_NAME,
-                "book__author",
-                new QueryBuilder<Book>()
-                        .matches(Book.builder().author(CHUCK_PALHANIUK).build())
-                        .build(),
-                Book.class);
+                new Query(new PredicateBuilder().withEq("author", CHUCK_PALHANIUK)),
+                Book.class, null, null);
         assertThat(result)
-                .matches(r -> r.getData().size() == 2, "expected size 3 ")
-                .matches(r -> r.getLastKey() == null, "expected no other results");
+                .matches(r -> r.getData().size() == 2, "expected size 2 ")
+                .matches(r -> r.getHasMore() != null && r.getHasMore().equals(Boolean.FALSE), "expected no other results");
         assertThat(result.getData())
                 .extracting(b -> tuple(b.getTitle(), b.getAuthor()))
                 .contains(
@@ -183,7 +181,7 @@ public class HttpSignatureClientTest {
     @Order(4)
     void queryForbidden() {
         assertThatExceptionOfType(SdkException.class)
-                .isThrownBy(() -> clientReadWrite.queryAll(CATEGORY_COLLECTION_NAME, null, null, Category.class)
+                .isThrownBy(() -> clientReadWrite.getAll(CATEGORY_COLLECTION_NAME, null, null, Category.class)
                 )
                 .isInstanceOf(SdkHttpException.class)
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);

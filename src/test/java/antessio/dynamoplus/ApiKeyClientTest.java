@@ -4,6 +4,8 @@ package antessio.dynamoplus;
 import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
+import antessio.dynamoplus.sdk.domain.conditions.PredicateBuilder;
+import antessio.dynamoplus.sdk.domain.document.query.Query;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
@@ -45,6 +47,7 @@ public class ApiKeyClientTest {
                         .map(clientScopeType -> new ClientScope(CATEGORY_COLLECTION_NAME, clientScopeType))
                         .collect(Collectors.toList()));
         DynamoPlusService.getInstance().setup(SUFFIX);
+
     }
 
     @AfterAll
@@ -64,14 +67,14 @@ public class ApiKeyClientTest {
     @Test
     @Order(2)
     void queryAllCategories() {
-        PaginatedResult<Category> result = clientReadWrite.queryAll(
+        PaginatedResult<Category> result = clientReadWrite.getAll(
                 CATEGORY_COLLECTION_NAME,
                 null,
                 null,
                 Category.class);
         assertThat(result)
                 .matches(r -> r.getData().size() == 2, "expected size 2")
-                .matches(r -> r.getLastKey() == null, "expected no other results")
+                .matches(r -> r.getHasMore() != null && r.getHasMore().equals(Boolean.FALSE), "expected no other results")
                 .matches(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName()) || c.getName().equals(THRILLER.getName())), "expected category found");
     }
 
@@ -79,16 +82,16 @@ public class ApiKeyClientTest {
     @Test
     @Order(2)
     void queryCategoriesByName() {
-        PaginatedResult<Category> result = clientReadWrite.queryByIndex(
+        PaginatedResult<Category> result = clientReadWrite.query(
                 CATEGORY_COLLECTION_NAME,
-                "category__name",
-                new QueryBuilder<Category>()
-                        .matches(Category.builder().name("Pulp").build())
-                        .build(),
-                Category.class);
+                new Query(new PredicateBuilder()
+                        .withEq("name", "Pulp")),
+                Category.class,
+                null,
+                null);
         assertThat(result)
                 .matches(r -> r.getData().size() == 1, "expected size 1")
-                .matches(r -> r.getLastKey() == null, "expected no other results")
+                .matches(r -> r.getHasMore() != null && r.getHasMore().equals(Boolean.FALSE), "expected no other results")
                 .matches(r -> r.getData().stream().allMatch(c -> c.getName().equals(PULP.getName())), "expected category found")
         ;
     }
@@ -113,7 +116,7 @@ public class ApiKeyClientTest {
     @Order(4)
     void queryForbidden() {
         assertThatExceptionOfType(SdkException.class)
-                .isThrownBy(() -> clientReadWrite.queryAll(BOOK_COLLECTION_NAME, null, null, Book.class)
+                .isThrownBy(() -> clientReadWrite.getAll(BOOK_COLLECTION_NAME, null, null, Book.class)
                 )
                 .isInstanceOf(SdkHttpException.class)
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);

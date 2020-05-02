@@ -29,7 +29,7 @@ public class DynamoPlusService {
     }
 
     private void cleanupCollection(String collectionName, Class collectionCls, Supplier<String> idSupplier) {
-        PaginatedResult<?> result = sdk.queryAll(collectionName, 20, null, collectionCls);
+        PaginatedResult<?> result = sdk.getAll(collectionName, 20, null, collectionCls);
         result
                 .getData()
                 .forEach(b -> sdk.deleteDocument(idSupplier.get(), collectionName));
@@ -58,11 +58,10 @@ public class DynamoPlusService {
     }
 
 
-    public Index createIndex(String name, List<String> conditions, Collection collection) {
+    public Index createIndex(List<String> conditions, Collection collection) {
         return sdk.createIndex(new IndexBuilder()
                 .uid(UUID.randomUUID())
                 .collection(collection)
-                .name(name)
                 .orderingKey(null)
                 .conditions(conditions)
                 .createIndex()
@@ -77,10 +76,10 @@ public class DynamoPlusService {
 
         Collection category = this.getOrCreateCollection("name", CATEGORY_COLLECTION_NAME);
         Collection book = this.getOrCreateCollection("isbn", BOOK_COLLECTION_NAME);
-        this.createIndex("category__name", Collections.singletonList("name"), category);
-        this.createIndex("book__author", Collections.singletonList("author"), book);
-        this.createIndex("book__title", Collections.singletonList("title"), book);
-        this.createIndex("book__category.name", Collections.singletonList("category.name"), book);
+        this.createIndex(Collections.singletonList("name"), category);
+        this.createIndex(Collections.singletonList("author"), book);
+        this.createIndex(Collections.singletonList("title"), book);
+        this.createIndex(Collections.singletonList("category.name"), book);
     }
 
     public void cleanup(String suffix) {
