@@ -4,13 +4,16 @@ package antessio.dynamoplus;
 import antessio.dynamoplus.domain.Book;
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
+import antessio.dynamoplus.sdk.domain.conditions.Eq;
 import antessio.dynamoplus.sdk.domain.conditions.PredicateBuilder;
+import antessio.dynamoplus.sdk.domain.conditions.Range;
 import antessio.dynamoplus.sdk.domain.document.query.Query;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.*;
 
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -87,17 +90,17 @@ public class HttpSignatureClientTest {
     @Test
     @Order(1)
     void createDocuments() {
-        testCreateBook(PULP, "Fight Club", "Chuck Palhaniuk");
-        testCreateBook(PULP, "Choke", "Chuck Palhaniuk");
-        testCreateBook(THRILLER, "Män som hatar kvinnor", "Stieg Larsson");
-        testCreateBook(PULP, "Pulp", "Charles Bukowski");
-        testCreateBook(PULP, "Filth", "Irvine Welsh");
+        testCreateBook(PULP, "Fight Club", "Chuck Palhaniuk", 8);
+        testCreateBook(PULP, "Choke", "Chuck Palhaniuk", 7);
+        testCreateBook(THRILLER, "Män som hatar kvinnor", "Stieg Larsson", 7);
+        testCreateBook(PULP, "Pulp", "Charles Bukowski", 5);
+        testCreateBook(PULP, "Filth", "Irvine Welsh", 6);
     }
 
     @DisplayName("Test query all documents")
     @Test
     @Order(2)
-    void queryAllCategories() {
+    void getAllBooks() {
         PaginatedResult<Book> result = clientReadWrite.getAll(
                 BOOK_COLLECTION_NAME,
                 null,
@@ -140,7 +143,7 @@ public class HttpSignatureClientTest {
 
     @DisplayName("Test query books by author")
     @Test
-    @Order(3)
+    @Order(4)
     void queryBooksByAuthor() {
         PaginatedResult<Book> result = clientReadWrite.query(
                 BOOK_COLLECTION_NAME,
@@ -159,7 +162,7 @@ public class HttpSignatureClientTest {
 
     @DisplayName("Test create forbidden")
     @Test
-    @Order(3)
+    @Order(5)
     void createForbidden() {
         assertThatExceptionOfType(SdkException.class)
                 .isThrownBy(() -> clientReadOnly.createDocument(BOOK_COLLECTION_NAME,
@@ -178,7 +181,7 @@ public class HttpSignatureClientTest {
 
     @DisplayName("Test query forbidden")
     @Test
-    @Order(4)
+    @Order(6)
     void queryForbidden() {
         assertThatExceptionOfType(SdkException.class)
                 .isThrownBy(() -> clientReadWrite.getAll(CATEGORY_COLLECTION_NAME, null, null, Category.class)
@@ -187,14 +190,39 @@ public class HttpSignatureClientTest {
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
     }
 
+    @DisplayName("Test query books by category")
+    @Test
+    @Order(7)
+    void queryBooksByCategoryAndRating() {
+        PaginatedResult<Book> result = clientReadWrite.query(
+                BOOK_COLLECTION_NAME,
+                new Query(new PredicateBuilder()
+                        .withAnd(Arrays.asList(
+                                new Eq("category.name", PULP.getName()),
+                                new Range("rating", "07", "09")
+                        ))),
+                Book.class,
+                null,
+                null);
+        assertThat(result)
+                .matches(r -> r.getHasMore() != null && r.getHasMore().equals(Boolean.FALSE), "expected no other results");
+        assertThat(result.getData())
+                .hasSize(2)
+                .extracting(b -> tuple(b.getTitle(), b.getAuthor()))
+                .contains(
+                        tuple("Fight Club", CHUCK_PALHANIUK),
+                        tuple("Choke", CHUCK_PALHANIUK)
+                );
+    }
 
-    private void testCreateBook(Category category, String title, String author) {
+    private void testCreateBook(Category category, String title, String author, int rating) {
         Book documentResult2 = clientReadWrite.createDocument(BOOK_COLLECTION_NAME,
                 Book.builder()
                         .isbn(getRandomIsbn())
                         .title(title)
                         .author(author)
                         .category(category)
+                        .rating(String.format("%02d", rating))
                         .build(),
                 Book.class);
         assertThat(documentResult2)

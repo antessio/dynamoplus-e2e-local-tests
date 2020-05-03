@@ -58,11 +58,11 @@ public class DynamoPlusService {
     }
 
 
-    public Index createIndex(List<String> conditions, Collection collection) {
+    public Index createIndex(List<String> conditions, Collection collection, String orderingKey) {
         return sdk.createIndex(new IndexBuilder()
                 .uid(UUID.randomUUID())
                 .collection(collection)
-                .orderingKey(null)
+                .orderingKey(orderingKey)
                 .conditions(conditions)
                 .createIndex()
         );
@@ -76,10 +76,11 @@ public class DynamoPlusService {
 
         Collection category = this.getOrCreateCollection("name", CATEGORY_COLLECTION_NAME);
         Collection book = this.getOrCreateCollection("isbn", BOOK_COLLECTION_NAME);
-        this.createIndex(Collections.singletonList("name"), category);
-        this.createIndex(Collections.singletonList("author"), book);
-        this.createIndex(Collections.singletonList("title"), book);
-        this.createIndex(Collections.singletonList("category.name"), book);
+        this.createIndex(Collections.singletonList("name"), category, null);
+        this.createIndex(Collections.singletonList("author"), book, null);
+        this.createIndex(Collections.singletonList("title"), book, null);
+        this.createIndex(Arrays.asList("category.name", "rating"), book, "rating");
+        this.createIndex(Collections.singletonList("category.name"), book, null);
     }
 
     public void cleanup(String suffix) {
