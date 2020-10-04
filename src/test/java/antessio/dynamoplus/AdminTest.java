@@ -9,6 +9,7 @@ import antessio.dynamoplus.sdk.domain.system.collection.*;
 import antessio.dynamoplus.sdk.domain.system.collection.Collection;
 import antessio.dynamoplus.sdk.domain.system.index.Index;
 import antessio.dynamoplus.sdk.domain.system.index.IndexBuilder;
+import antessio.dynamoplus.sdk.domain.system.index.IndexConfiguration;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.Test;
 
@@ -70,10 +71,10 @@ public class AdminTest {
     @Test
     @Order(2)
     void testCreateIndexes() {
-        testIndex(CATEGORY_COLLECTION_NAME, "category__name", Collections.singletonList("name"), getCollection("name", CATEGORY_COLLECTION_NAME));
-        testIndex(BOOK_COLLECTION_NAME, "book__author", Collections.singletonList("author"), getCollection("isbn", BOOK_COLLECTION_NAME));
-        testIndex(BOOK_COLLECTION_NAME, "book__title", Collections.singletonList("title"), getCollection("isbn", BOOK_COLLECTION_NAME));
-        testIndex(BOOK_COLLECTION_NAME, "book__category.name", Collections.singletonList("category.name"), getCollection("isbn", BOOK_COLLECTION_NAME));
+        testIndex(CATEGORY_COLLECTION_NAME, "category__name", Collections.singletonList("name"), getCollection("name", CATEGORY_COLLECTION_NAME), IndexConfiguration.OPTIMIZE_READ);
+        testIndex(BOOK_COLLECTION_NAME, "book__author", Collections.singletonList("author"), getCollection("isbn", BOOK_COLLECTION_NAME), IndexConfiguration.OPTIMIZE_READ);
+        testIndex(BOOK_COLLECTION_NAME, "book__title", Collections.singletonList("title"), getCollection("isbn", BOOK_COLLECTION_NAME), IndexConfiguration.OPTIMIZE_READ);
+        testIndex(BOOK_COLLECTION_NAME, "book__category.name", Collections.singletonList("category.name"), getCollection("isbn", BOOK_COLLECTION_NAME), IndexConfiguration.OPTIMIZE_WRITE);
     }
 
 
@@ -152,13 +153,14 @@ public class AdminTest {
     }
 
 
-    private void testIndex(String category, String name, List<String> conditions, Collection collection) {
+    private void testIndex(String category, String name, List<String> conditions, Collection collection, IndexConfiguration indexConfiguration) {
         Index resultCreateIndex1 = sdk.createIndex(new IndexBuilder()
                 .uid(UUID.randomUUID())
                 .collection(collection)
                 .orderingKey(null)
                 .conditions(conditions)
-                .createIndex()
+                .indexConfiguration(indexConfiguration)
+                .build()
         );
         assertIndexMatches(resultCreateIndex1, category, name);
     }

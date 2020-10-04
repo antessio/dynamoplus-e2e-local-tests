@@ -64,7 +64,7 @@ public class DynamoPlusService {
                 .collection(collection)
                 .orderingKey(orderingKey)
                 .conditions(conditions)
-                .createIndex()
+                .build()
         );
 
     }
