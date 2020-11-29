@@ -155,7 +155,6 @@ public class AdminTest {
 
     private void testIndex(String category, String name, List<String> conditions, Collection collection, IndexConfiguration indexConfiguration) {
         Index resultCreateIndex1 = sdk.createIndex(new IndexBuilder()
-                .uid(UUID.randomUUID())
                 .collection(collection)
                 .orderingKey(null)
                 .conditions(conditions)
@@ -180,7 +179,6 @@ public class AdminTest {
 
     private void assertIndexMatches(Index indexResult, String collectionName, String indexName) {
         assertThat(indexResult)
-                .matches(i -> i.getUid() != null, "uid must be present")
                 .matches(i -> i.getCollection().getName().equals(collectionName), "collection name must match")
         //.matches(i -> i.getName().equals(indexName), "index name must match")
         ;
