@@ -60,7 +60,6 @@ public class DynamoPlusService {
 
     public Index createIndex(List<String> conditions, Collection collection, String orderingKey) {
         return sdk.createIndex(new IndexBuilder()
-                .uid(UUID.randomUUID())
                 .collection(collection)
                 .orderingKey(orderingKey)
                 .conditions(conditions)
