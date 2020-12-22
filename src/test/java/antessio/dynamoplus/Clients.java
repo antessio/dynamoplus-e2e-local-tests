@@ -121,16 +121,39 @@ public class Clients {
                         .build())).buildV2();
     }
 
+    public SDKV2 createClientApiKey(ClientAuthorizationApiKey clientAuthorization) {
+        String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
+        return new SdkBuilder(
+                host,
+                new OkHttpSdkHttpClient(HTTP_CONFIGURATION, new ApiKeyCredentialsProviderBuilder()
+                        .withClientId(clientAuthorization.getClientId())
+                        .withApiKey(clientAuthorization.getApiKey())
+                        .build())).buildV2();
+    }
+
     public SDKV2 createHttpSignature(String clientId, List<ClientScope> scopes) {
         ClientAuthorizationHttpSignature clientAuthorization = new ClientAuthorizationHttpSignature(clientId, scopes, publicKey);
         adminClient.createClientAuthorizationHttpSignature(clientAuthorization);
         String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
         return new SdkBuilder(
                 host,
-                new OkHttpSdkHttpClient(HTTP_CONFIGURATION, new HttpSignatureCredentialsProviderBuilder()
-                        .withKeyId(clientId)
-                        .withPrivateKey(getPrivateKey())
-                        .build()))
+                new OkHttpSdkHttpClient(HTTP_CONFIGURATION,
+                        new HttpSignatureCredentialsProviderBuilder()
+                                .withKeyId(clientId)
+                                .withPrivateKey(getPrivateKey())
+                                .build()))
+                .buildV2();
+    }
+
+    public SDKV2 createHttpSignature(ClientAuthorizationHttpSignature clientAuthorization) {
+        String host = Optional.ofNullable(System.getenv("DYNAMOPLUS_HOST")).orElse("http://localhost:3000");
+        return new SdkBuilder(
+                host,
+                new OkHttpSdkHttpClient(HTTP_CONFIGURATION,
+                        new HttpSignatureCredentialsProviderBuilder()
+                                .withKeyId(clientAuthorization.getClientId())
+                                .withPrivateKey(clientAuthorization.getPublicKey())
+                                .build()))
                 .buildV2();
     }
 }
