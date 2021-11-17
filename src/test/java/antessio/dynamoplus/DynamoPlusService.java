@@ -2,7 +2,7 @@ package antessio.dynamoplus;
 
 import antessio.dynamoplus.domain.Category;
 import antessio.dynamoplus.sdk.*;
-import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorization;
+import antessio.dynamoplus.sdk.domain.system.aggregation.*;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationApiKey;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientAuthorizationHttpSignature;
 import antessio.dynamoplus.sdk.domain.system.collection.Collection;
@@ -15,6 +15,10 @@ import java.util.function.Supplier;
 
 public class DynamoPlusService {
 
+    public static final HashSet<AggregationConfigurationTrigger> ALL_TRIGGERS = new HashSet<>(Arrays.asList(
+            AggregationConfigurationTrigger.INSERT,
+            AggregationConfigurationTrigger.UPDATE,
+            AggregationConfigurationTrigger.DELETE));
     private SDKV2 sdk;
 
 
@@ -57,6 +61,13 @@ public class DynamoPlusService {
 
         return findCollectionByName(collectionName)
                 .orElseGet(() -> sdk.createCollection(getCollection(idKey, collectionName)));
+
+    }
+
+    public Collection getOrCreateCollection(String collectionName, Collection collection) {
+
+        return findCollectionByName(collectionName)
+                .orElseGet(() -> sdk.createCollection(collection));
 
     }
 
@@ -125,4 +136,48 @@ public class DynamoPlusService {
     public ClientAuthorizationApiKey getClientAuthorizationApiKey(String clientId) {
         return sdk.getClientAuthorizationApiKey(clientId);
     }
+
+    public AggregationConfiguration createAggregationConfigurationCount(Collection collection) {
+        return createAggregation(new AggregationConfigurationBuilder()
+                .withCollection(collection)
+                .withType(AggregationConfigurationType.COLLECTION_COUNT)
+                .withConfiguration(new AggregationConfigurationPayloadBuilder()
+                        .withOn(new HashSet<>(Arrays.asList(
+                                AggregationConfigurationTrigger.INSERT,
+                                AggregationConfigurationTrigger.DELETE
+                        )))
+                        .build())
+                .build());
+    }
+
+    public AggregationConfiguration createAggregation(AggregationConfiguration aggregationConfiguration) {
+        return sdk.createAggregation(aggregationConfiguration);
+    }
+
+    public AggregationConfiguration createAggregationAvg(Collection collection,
+                                                         String targetField) {
+        return createAggregation(new AggregationConfigurationBuilder()
+                .withCollection(collection)
+                .withType(AggregationConfigurationType.AVG)
+                .withConfiguration(new AggregationConfigurationPayloadBuilder()
+                        .withTargetField(targetField)
+                        .withOn(ALL_TRIGGERS)
+                        .build())
+                .build());
+    }
+
+    public AggregationConfiguration createAggregationSumCount(Collection collection,
+                                                              String joinCollectionName,
+                                                              String joinField) {
+        return createAggregation(new AggregationConfigurationBuilder()
+                .withCollection(collection)
+                .withType(AggregationConfigurationType.SUM_COUNT)
+                .withJoin(new AggregationConfigurationJoin(joinCollectionName, joinField))
+                .withConfiguration(new AggregationConfigurationPayloadBuilder()
+                        .withOn(ALL_TRIGGERS)
+                        .build())
+                .build());
+    }
+
+
 }
