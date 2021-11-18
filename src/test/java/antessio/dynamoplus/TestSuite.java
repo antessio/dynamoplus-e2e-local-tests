@@ -7,6 +7,6 @@ import org.junit.runner.RunWith;
 
 @RunWith(JUnitPlatform.class)
 @SuiteDisplayName("End To End Tests")
-@SelectClasses({AdminTest.class, ApiKeyBookStoreTest.class, HttpSignatureBookStoreTest.class})
+@SelectClasses({AdminTest.class, ApiKeyBookStoreTest.class, HttpSignatureBookStoreTest.class, ApiKeyRestaurantTest.class})
 public class TestSuite {
 }
