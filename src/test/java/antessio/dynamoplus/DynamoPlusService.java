@@ -9,6 +9,7 @@ import antessio.dynamoplus.sdk.domain.system.collection.Collection;
 import antessio.dynamoplus.sdk.domain.system.collection.CollectionBuilder;
 import antessio.dynamoplus.sdk.domain.system.index.Index;
 import antessio.dynamoplus.sdk.domain.system.index.IndexBuilder;
+import antessio.dynamoplus.sdk.domain.system.index.IndexConfiguration;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -84,6 +85,17 @@ public class DynamoPlusService {
                 .collection(collection)
                 .orderingKey(orderingKey)
                 .conditions(conditions)
+                .build()
+        );
+
+    }
+
+    public Index createIndex(List<String> conditions, Collection collection, String orderingKey, IndexConfiguration indexConfiguration) {
+        return sdk.createIndex(new IndexBuilder()
+                .collection(collection)
+                .orderingKey(orderingKey)
+                .conditions(conditions)
+                .indexConfiguration(indexConfiguration)
                 .build()
         );
 

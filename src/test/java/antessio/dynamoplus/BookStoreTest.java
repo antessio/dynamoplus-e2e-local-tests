@@ -12,6 +12,7 @@ import antessio.dynamoplus.sdk.domain.conditions.Range;
 import antessio.dynamoplus.sdk.domain.document.query.Query;
 import antessio.dynamoplus.sdk.domain.system.clientauthorization.ClientScope;
 import antessio.dynamoplus.sdk.domain.system.collection.Collection;
+import antessio.dynamoplus.sdk.domain.system.index.IndexConfiguration;
 import org.assertj.core.api.AssertionsForInterfaceTypes;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
@@ -48,11 +49,11 @@ public abstract class BookStoreTest {
     protected static void initialize(String suffix) {
         Collection category = DynamoPlusService.getInstance().getOrCreateCollection("name", getCollectionName(CATEGORY_BASE_COLLECTION_NAME, suffix));
         Collection book = DynamoPlusService.getInstance().getOrCreateCollection("isbn", getCollectionName(BOOK_BASE_COLLECTION_NAME, suffix));
-        DynamoPlusService.getInstance().createIndex(Collections.singletonList("name"), category, null);
-        DynamoPlusService.getInstance().createIndex(Collections.singletonList("author"), book, null);
-        DynamoPlusService.getInstance().createIndex(Collections.singletonList("title"), book, null);
-        DynamoPlusService.getInstance().createIndex(Arrays.asList("category.name", "rating"), book, "rating");
-        DynamoPlusService.getInstance().createIndex(Collections.singletonList("category.name"), book, null);
+        DynamoPlusService.getInstance().createIndex(Collections.singletonList("name"), category, null, IndexConfiguration.OPTIMIZE_WRITE);
+        DynamoPlusService.getInstance().createIndex(Collections.singletonList("author"), book, null, IndexConfiguration.OPTIMIZE_WRITE);
+        DynamoPlusService.getInstance().createIndex(Collections.singletonList("title"), book, null, IndexConfiguration.OPTIMIZE_READ);
+        DynamoPlusService.getInstance().createIndex(Arrays.asList("category.name", "rating"), book, "rating", IndexConfiguration.OPTIMIZE_WRITE);
+        DynamoPlusService.getInstance().createIndex(Collections.singletonList("category.name"), book, null, IndexConfiguration.OPTIMIZE_READ);
 
     }
 
