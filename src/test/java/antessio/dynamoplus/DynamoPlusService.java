@@ -95,7 +95,7 @@ public class DynamoPlusService {
                 .collection(collection)
                 .orderingKey(orderingKey)
                 .conditions(conditions)
-                .indexConfiguration(indexConfiguration)
+                .configuration(indexConfiguration)
                 .build()
         );
 

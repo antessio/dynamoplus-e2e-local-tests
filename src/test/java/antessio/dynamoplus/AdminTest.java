@@ -158,7 +158,7 @@ public class AdminTest {
                 .collection(collection)
                 .orderingKey(null)
                 .conditions(conditions)
-                .indexConfiguration(indexConfiguration)
+                .configuration(indexConfiguration)
                 .build()
         );
         assertIndexMatches(resultCreateIndex1, category, name);

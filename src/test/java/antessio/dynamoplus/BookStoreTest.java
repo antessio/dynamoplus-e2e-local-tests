@@ -319,7 +319,7 @@ public abstract class BookStoreTest {
 
     @DisplayName("Test query category forbidden")
     @Test
-    @Order(5002)
+    @Order(502)
     void queryCategoryForbidden() {
         String collectionName = getCollectionName(BOOK_BASE_COLLECTION_NAME, getSuffix());
         assertThatExceptionOfType(SdkException.class)
@@ -330,5 +330,51 @@ public abstract class BookStoreTest {
                 .matches(e -> ((SdkHttpException) e).getHttpCode() == 403);
     }
 
+    @DisplayName("Test update index with optimize read/write config")
+    @Test
+    @Order(503)
+    void updateFieldThenQueryIndex() {
 
+        String collectionName = getCollectionName(BOOK_BASE_COLLECTION_NAME, getSuffix());
+        SDKV2 client = getClient(CLIENT_ID_BOOK_READ_WRITE, getClientScopeRW(collectionName));
+        Book bookByAuthor = Optional.ofNullable(client.query(
+                collectionName,
+                new Query(new PredicateBuilder().withEq("author", CHUCK_PALHANIUK)),
+                Book.class, 1, null))
+                .map(r->r.getData().get(0))
+                .orElseThrow(()->new IllegalStateException("book not found by author"));
+
+        String updatedRating = "02";
+        Book updatedBook = client.updateDocument(bookByAuthor.getIsbn(), collectionName,
+                Book.builder()
+                        .author(bookByAuthor.getAuthor())
+                        .category(bookByAuthor.getCategory())
+                        .isbn(bookByAuthor.getIsbn())
+                        .title(bookByAuthor.getTitle())
+                        .rating(updatedRating)
+                        .build(),
+                Book.class);
+        assertThat(updatedBook)
+                .isEqualToIgnoringGivenFields(bookByAuthor,"rating")
+                .matches(b->b.getRating().equals(updatedRating));
+        bookByAuthor = Optional.ofNullable(client.query(
+                        collectionName,
+                        new Query(new PredicateBuilder().withEq("author", CHUCK_PALHANIUK)),
+                        Book.class, 1, null))
+                .map(r->r.getData().get(0))
+                .orElseThrow(()->new IllegalStateException("book not found by author"));
+        assertThat(bookByAuthor)
+                .isEqualTo(updatedBook);
+        Book bookByTitle = Optional.ofNullable(client.query(
+                collectionName,
+                new Query(new PredicateBuilder()
+                        .withEq("title",bookByAuthor.getTitle())),
+                Book.class,1,null))
+                .filter(r->r.getData().size()==1)
+                .map(r->r.getData().get(0))
+                .orElseThrow(()->new IllegalStateException("book by name not found"));
+        assertThat(bookByTitle)
+                .isEqualTo(bookByAuthor);
+
+    }
 }
